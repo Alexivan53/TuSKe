@@ -4,11 +4,14 @@ import ch.njol.skript.variables.Variables;
 import org.bukkit.event.Event;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 
 /**
  * @author Tuke_Nuke on 28/05/2017
+ *
+ * Updated for Skript 2.12+: localVariables may not be a WeakHashMap; handle any Map implementation.
  */
 public class VariableUtil {
 	private static VariableUtil instance;
@@ -21,7 +24,16 @@ public class VariableUtil {
 	private VariableUtil() {
 
 	}
-	public WeakHashMap<Event, Object> map = ReflectionUtils.getField(Variables.class, null, "localVariables");
+	@SuppressWarnings("unchecked")
+	public Map<Event, Object> map = initMap();
+
+	@SuppressWarnings("unchecked")
+	private Map<Event, Object> initMap() {
+		Object reflected = ReflectionUtils.getField(Variables.class, null, "localVariables");
+		if (reflected instanceof Map)
+			return (Map<Event, Object>) reflected;
+		return new WeakHashMap<>();
+	}
 	/**
 	 * Some hacking methods to copy variables from one event, and paste
 	 * to another. It allows to run the section using the same variables
