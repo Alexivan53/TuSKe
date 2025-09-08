@@ -1,0 +1,61 @@
+apply plugin: 'java'
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'windows-1252'
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url 'https://repo.skriptlang.org/releases' }
+    maven { url 'https://repo.viaversion.com/' }
+    maven { url 'https://jitpack.io' }
+}
+configurations {
+    compileWithJar
+}
+dependencies {
+    testImplementation group: 'junit', name: 'junit', version: '4.13.2'
+    // Build against modern Paper API 1.21.x
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    // Keep local jars if present
+    compileOnly fileTree(dir: 'dependencies', include: '*.jar')
+    // Skript API - align with your server (example 2.12.2)
+    compileOnly 'com.github.SkriptLang:Skript:2.12.2'
+    // Generex bundled into final jar
+    compileWithJar files('dependencies/Generex.jar')
+    // Apache libraries used by this project, bundle into jar
+    compileWithJar 'commons-io:commons-io:2.11.0'
+    compileWithJar 'commons-lang:commons-lang:2.6'
+    // JPA API to satisfy javax.persistence warnings
+    compileWithJar 'javax.persistence:javax.persistence-api:2.2'
+    // ViaVersion queried via reflection at runtime when present; no compile dependency
+    configurations.implementation?.extendsFrom(configurations.compileWithJar)
+    configurations.compileOnly.extendsFrom(configurations.compileWithJar)
+}
+
+//Used to copy the final jar in test server located in at same place
+//It requires that you execute "./gradlew clean build copy"
+task copy(type: Copy) {
+    from 'build/libs/TuSKe.jar'
+    into 'server/plugins'
+}
+
+processResources {
+    filesMatching('plugin.yml') {
+        expand(version: project.property('version'))
+    }
+}
+
+jar {
+    archiveFileName = 'TuSKe.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.compileWithJar.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
